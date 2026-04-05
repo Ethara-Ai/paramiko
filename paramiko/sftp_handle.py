@@ -89,21 +89,7 @@ class SFTPHandle(ClosingContextManager):
         :param int length: number of bytes to attempt to read.
         :return: the `bytes` read, or an error code `int`.
         """
-        readfile = getattr(self, "readfile", None)
-        if readfile is None:
-            return SFTP_OP_UNSUPPORTED
-        try:
-            if self.__tell is None:
-                self.__tell = readfile.tell()
-            if offset != self.__tell:
-                readfile.seek(offset)
-                self.__tell = offset
-            data = readfile.read(length)
-        except IOError as e:
-            self.__tell = None
-            return SFTPServer.convert_errno(e.errno)
-        self.__tell += len(data)
-        return data
+        pass
 
     def write(self, offset, data):
         """
@@ -154,7 +140,7 @@ class SFTPHandle(ClosingContextManager):
             (like ``SFTP_PERMISSION_DENIED``).
         :rtype: `.SFTPAttributes` or error code
         """
-        return SFTP_OP_UNSUPPORTED
+        pass
 
     def chattr(self, attr):
         """
@@ -165,7 +151,7 @@ class SFTPHandle(ClosingContextManager):
         :param .SFTPAttributes attr: the attributes to change on this file.
         :return: an `int` error code like ``SFTP_OK``.
         """
-        return SFTP_OP_UNSUPPORTED
+        pass
 
     # ...internals...
 
@@ -175,22 +161,20 @@ class SFTPHandle(ClosingContextManager):
         the SFTP protocol, listing a directory is a multi-stage process
         requiring a temporary handle.)
         """
-        self.__files = files
+        pass
 
     def _get_next_files(self):
         """
         Used by the SFTP server code to retrieve a cached directory
         listing.
         """
-        fnlist = self.__files[:16]
-        self.__files = self.__files[16:]
-        return fnlist
+        pass
 
     def _get_name(self):
-        return self.__name
+        pass
 
     def _set_name(self, name):
-        self.__name = name
+        pass
 
 
 from paramiko.sftp_server import SFTPServer

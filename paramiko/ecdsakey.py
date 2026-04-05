@@ -74,22 +74,16 @@ class _ECDSACurveSet:
         self.ecdsa_curves = ecdsa_curves
 
     def get_key_format_identifier_list(self):
-        return [curve.key_format_identifier for curve in self.ecdsa_curves]
+        pass
 
     def get_by_curve_class(self, curve_class):
-        for curve in self.ecdsa_curves:
-            if curve.curve_class == curve_class:
-                return curve
+        pass
 
     def get_by_key_format_identifier(self, key_format_identifier):
-        for curve in self.ecdsa_curves:
-            if curve.key_format_identifier == key_format_identifier:
-                return curve
+        pass
 
     def get_by_key_length(self, key_length):
-        for curve in self.ecdsa_curves:
-            if curve.key_length == key_length:
-                return curve
+        pass
 
 
 class ECDSAKey(PKey):
@@ -170,78 +164,37 @@ class ECDSAKey(PKey):
 
     @classmethod
     def identifiers(cls):
-        return cls._ECDSA_CURVES.get_key_format_identifier_list()
+        pass
 
     # TODO 4.0: deprecate/remove
     @classmethod
     def supported_key_format_identifiers(cls):
-        return cls.identifiers()
+        pass
 
     def asbytes(self):
-        key = self.verifying_key
-        m = Message()
-        m.add_string(self.ecdsa_curve.key_format_identifier)
-        m.add_string(self.ecdsa_curve.nist_name)
-
-        numbers = key.public_numbers()
-
-        key_size_bytes = (key.curve.key_size + 7) // 8
-
-        x_bytes = deflate_long(numbers.x, add_sign_padding=False)
-        x_bytes = b"\x00" * (key_size_bytes - len(x_bytes)) + x_bytes
-
-        y_bytes = deflate_long(numbers.y, add_sign_padding=False)
-        y_bytes = b"\x00" * (key_size_bytes - len(y_bytes)) + y_bytes
-
-        point_str = four_byte + x_bytes + y_bytes
-        m.add_string(point_str)
-        return m.asbytes()
+        pass
 
     def __str__(self):
         return self.asbytes()
 
     @property
     def _fields(self):
-        return (
-            self.get_name(),
-            self.verifying_key.public_numbers().x,
-            self.verifying_key.public_numbers().y,
-        )
+        pass
 
     def get_name(self):
-        return self.ecdsa_curve.key_format_identifier
+        pass
 
     def get_bits(self):
-        return self.ecdsa_curve.key_length
+        pass
 
     def can_sign(self):
-        return self.signing_key is not None
+        pass
 
     def sign_ssh_data(self, data, algorithm=None):
-        ecdsa = ec.ECDSA(self.ecdsa_curve.hash_object())
-        sig = self.signing_key.sign(data, ecdsa)
-        r, s = decode_dss_signature(sig)
-
-        m = Message()
-        m.add_string(self.ecdsa_curve.key_format_identifier)
-        m.add_string(self._sigencode(r, s))
-        return m
+        pass
 
     def verify_ssh_sig(self, data, msg):
-        if msg.get_text() != self.ecdsa_curve.key_format_identifier:
-            return False
-        sig = msg.get_binary()
-        sigR, sigS = self._sigdecode(sig)
-        signature = encode_dss_signature(sigR, sigS)
-
-        try:
-            self.verifying_key.verify(
-                signature, data, ec.ECDSA(self.ecdsa_curve.hash_object())
-            )
-        except InvalidSignature:
-            return False
-        else:
-            return True
+        pass
 
     def write_private_key_file(self, filename, password=None):
         self._write_private_key_file(
@@ -252,12 +205,7 @@ class ECDSAKey(PKey):
         )
 
     def write_private_key(self, file_obj, password=None):
-        self._write_private_key(
-            file_obj,
-            self.signing_key,
-            serialization.PrivateFormat.TraditionalOpenSSL,
-            password=password,
-        )
+        pass
 
     @classmethod
     def generate(cls, curve=ec.SECP256R1(), progress_func=None, bits=None):
@@ -280,60 +228,16 @@ class ECDSAKey(PKey):
     # ...internals...
 
     def _from_private_key_file(self, filename, password):
-        data = self._read_private_key_file("EC", filename, password)
-        self._decode_key(data)
+        pass
 
     def _from_private_key(self, file_obj, password):
-        data = self._read_private_key("EC", file_obj, password)
-        self._decode_key(data)
+        pass
 
     def _decode_key(self, data):
-        pkformat, data = data
-        if pkformat == self._PRIVATE_KEY_FORMAT_ORIGINAL:
-            try:
-                key = serialization.load_der_private_key(
-                    data, password=None, backend=default_backend()
-                )
-            except (
-                ValueError,
-                AssertionError,
-                TypeError,
-                UnsupportedAlgorithm,
-            ) as e:
-                raise SSHException(str(e))
-        elif pkformat == self._PRIVATE_KEY_FORMAT_OPENSSH:
-            try:
-                msg = Message(data)
-                curve_name = msg.get_text()
-                verkey = msg.get_binary()  # noqa: F841
-                sigkey = msg.get_mpint()
-                name = "ecdsa-sha2-" + curve_name
-                curve = self._ECDSA_CURVES.get_by_key_format_identifier(name)
-                if not curve:
-                    raise SSHException("Invalid key curve identifier")
-                key = ec.derive_private_key(
-                    sigkey, curve.curve_class(), default_backend()
-                )
-            except Exception as e:
-                # PKey._read_private_key_openssh() should check or return
-                # keytype - parsing could fail for any reason due to wrong type
-                raise SSHException(str(e))
-        else:
-            self._got_bad_key_format_id(pkformat)
-
-        self.signing_key = key
-        self.verifying_key = key.public_key()
-        curve_class = key.curve.__class__
-        self.ecdsa_curve = self._ECDSA_CURVES.get_by_curve_class(curve_class)
+        pass
 
     def _sigencode(self, r, s):
-        msg = Message()
-        msg.add_mpint(r)
-        msg.add_mpint(s)
-        return msg.asbytes()
+        pass
 
     def _sigdecode(self, sig):
-        msg = Message(sig)
-        r = msg.get_mpint()
-        s = msg.get_mpint()
-        return r, s
+        pass

@@ -93,42 +93,19 @@ class ProxyCommand(ClosingContextManager):
 
         :return: the string of bytes read, which may be shorter than requested
         """
-        try:
-            buffer = b""
-            start = time.time()
-            while len(buffer) < size:
-                select_timeout = None
-                if self.timeout is not None:
-                    elapsed = time.time() - start
-                    if elapsed >= self.timeout:
-                        raise socket.timeout()
-                    select_timeout = self.timeout - elapsed
-
-                r, w, x = select([self.process.stdout], [], [], select_timeout)
-                if r and r[0] == self.process.stdout:
-                    buffer += os.read(
-                        self.process.stdout.fileno(), size - len(buffer)
-                    )
-            return buffer
-        except socket.timeout:
-            if buffer:
-                # Don't raise socket.timeout, return partial result instead
-                return buffer
-            raise  # socket.timeout is a subclass of IOError
-        except IOError as e:
-            raise ProxyCommandFailure(" ".join(self.cmd), e.strerror)
+        pass
 
     def close(self):
         os.kill(self.process.pid, signal.SIGTERM)
 
     @property
     def closed(self):
-        return self.process.returncode is not None
+        pass
 
     @property
     def _closed(self):
         # Concession to Python 3 socket-like API
-        return self.closed
+        pass
 
     def settimeout(self, timeout):
-        self.timeout = timeout
+        pass

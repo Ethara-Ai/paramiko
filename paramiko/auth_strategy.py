@@ -27,9 +27,7 @@ class AuthSource:
     def _repr(self, **kwargs):
         # TODO: are there any good libs for this? maybe some helper from
         # structlog?
-        pairs = [f"{k}={v!r}" for k, v in kwargs.items()]
-        joined = ", ".join(pairs)
-        return f"{self.__class__.__name__}({joined})"
+        pass
 
     def __repr__(self):
         return self._repr()
@@ -47,7 +45,7 @@ class NoneAuth(AuthSource):
     """
 
     def authenticate(self, transport):
-        return transport.auth_none(self.username)
+        pass
 
 
 class Password(AuthSource):
@@ -77,8 +75,7 @@ class Password(AuthSource):
     def authenticate(self, transport):
         # Lazily get the password, in case it's prompting a user
         # TODO: be nice to log source _of_ the password?
-        password = self.password_getter()
-        return transport.auth_password(self.username, password)
+        pass
 
 
 # TODO 4.0: twiddle this, or PKey, or both, so they're more obviously distinct.
@@ -99,7 +96,7 @@ class PrivateKey(AuthSource):
     """
 
     def authenticate(self, transport):
-        return transport.auth_publickey(self.username, self.pkey)
+        pass
 
 
 class InMemoryPrivateKey(PrivateKey):
@@ -264,43 +261,7 @@ class AuthStrategy:
         You *normally* won't need to override this, but it's an option for
         advanced users.
         """
-        succeeded = False
-        overall_result = AuthResult(strategy=self)
-        # TODO: arguably we could fit in a "send none auth, record allowed auth
-        # types sent back" thing here as OpenSSH-client does, but that likely
-        # wants to live in fabric.OpenSSHAuthStrategy as not all target servers
-        # will implement it!
-        # TODO: needs better "server told us too many attempts" checking!
-        for source in self.get_sources():
-            self.log.debug(f"Trying {source}")
-            try:  # NOTE: this really wants to _only_ wrap the authenticate()!
-                result = source.authenticate(transport)
-                succeeded = True
-            # TODO: 'except PartialAuthentication' is needed for 2FA and
-            # similar, as per old SSHClient.connect - it is the only way
-            # AuthHandler supplies access to the 'name-list' field from
-            # MSG_USERAUTH_FAILURE, at present.
-            except Exception as e:
-                result = e
-                # TODO: look at what this could possibly raise, we don't really
-                # want Exception here, right? just SSHException subclasses? or
-                # do we truly want to capture anything at all with assumption
-                # it's easy enough for users to look afterwards?
-                # NOTE: showing type, not message, for tersity & also most of
-                # the time it's basically just "Authentication failed."
-                source_class = e.__class__.__name__
-                self.log.info(
-                    f"Authentication via {source} failed with {source_class}"
-                )
-            overall_result.append(SourceResult(source, result))
-            if succeeded:
-                break
-        # Gotta die here if nothing worked, otherwise Transport's main loop
-        # just kinda hangs out until something times out!
-        if not succeeded:
-            raise AuthFailure(result=overall_result)
-        # Success: give back what was done, in case they care.
-        return overall_result
+        pass
 
     # TODO: is there anything OpenSSH client does which _can't_ cleanly map to
     # iterating a generator?

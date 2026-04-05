@@ -81,25 +81,18 @@ class RSAKey(PKey):
 
     @classmethod
     def identifiers(cls):
-        return list(cls.HASHES.keys())
+        pass
 
     @property
     def size(self):
-        return self.key.key_size
+        pass
 
     @property
     def public_numbers(self):
-        if isinstance(self.key, rsa.RSAPrivateKey):
-            return self.key.private_numbers().public_numbers
-        else:
-            return self.key.public_numbers()
+        pass
 
     def asbytes(self):
-        m = Message()
-        m.add_string(self.name)
-        m.add_mpint(self.public_numbers.e)
-        m.add_mpint(self.public_numbers.n)
-        return m.asbytes()
+        pass
 
     def __str__(self):
         # NOTE: see #853 to explain some legacy behavior.
@@ -108,56 +101,22 @@ class RSAKey(PKey):
 
     @property
     def _fields(self):
-        return (self.get_name(), self.public_numbers.e, self.public_numbers.n)
+        pass
 
     def get_name(self):
-        return self.name
+        pass
 
     def get_bits(self):
-        return self.size
+        pass
 
     def can_sign(self):
-        return isinstance(self.key, rsa.RSAPrivateKey)
+        pass
 
     def sign_ssh_data(self, data, algorithm=None):
-        if algorithm is None:
-            algorithm = self.name
-        sig = self.key.sign(
-            data,
-            padding=padding.PKCS1v15(),
-            # HASHES being just a map from long identifier to either SHA1 or
-            # SHA256 - cert'ness is not truly relevant.
-            algorithm=self.HASHES[algorithm](),
-        )
-        m = Message()
-        # And here again, cert'ness is irrelevant, so it is stripped out.
-        m.add_string(algorithm.replace("-cert-v01@openssh.com", ""))
-        m.add_string(sig)
-        return m
+        pass
 
     def verify_ssh_sig(self, data, msg):
-        sig_algorithm = msg.get_text()
-        if sig_algorithm not in self.HASHES:
-            return False
-        key = self.key
-        if isinstance(key, rsa.RSAPrivateKey):
-            key = key.public_key()
-
-        # NOTE: pad received signature with leading zeros, key.verify()
-        # expects a signature of key size (e.g. PuTTY doesn't pad)
-        sign = msg.get_binary()
-        diff = key.key_size - len(sign) * 8
-        if diff > 0:
-            sign = b"\x00" * ((diff + 7) // 8) + sign
-
-        try:
-            key.verify(
-                sign, data, padding.PKCS1v15(), self.HASHES[sig_algorithm]()
-            )
-        except InvalidSignature:
-            return False
-        else:
-            return True
+        pass
 
     def write_private_key_file(self, filename, password=None):
         self._write_private_key_file(
@@ -168,12 +127,7 @@ class RSAKey(PKey):
         )
 
     def write_private_key(self, file_obj, password=None):
-        self._write_private_key(
-            file_obj,
-            self.key,
-            serialization.PrivateFormat.TraditionalOpenSSL,
-            password=password,
-        )
+        pass
 
     @staticmethod
     def generate(bits, progress_func=None):
@@ -193,35 +147,10 @@ class RSAKey(PKey):
     # ...internals...
 
     def _from_private_key_file(self, filename, password):
-        data = self._read_private_key_file("RSA", filename, password)
-        self._decode_key(data)
+        pass
 
     def _from_private_key(self, file_obj, password):
-        data = self._read_private_key("RSA", file_obj, password)
-        self._decode_key(data)
+        pass
 
     def _decode_key(self, data):
-        pkformat, data = data
-        if pkformat == self._PRIVATE_KEY_FORMAT_ORIGINAL:
-            try:
-                key = serialization.load_der_private_key(
-                    data, password=None, backend=default_backend()
-                )
-            except (ValueError, TypeError, UnsupportedAlgorithm) as e:
-                raise SSHException(str(e))
-        elif pkformat == self._PRIVATE_KEY_FORMAT_OPENSSH:
-            n, e, d, iqmp, p, q = self._uint32_cstruct_unpack(data, "iiiiii")
-            public_numbers = rsa.RSAPublicNumbers(e=e, n=n)
-            key = rsa.RSAPrivateNumbers(
-                p=p,
-                q=q,
-                d=d,
-                dmp1=d % (p - 1),
-                dmq1=d % (q - 1),
-                iqmp=iqmp,
-                public_numbers=public_numbers,
-            ).private_key(default_backend())
-        else:
-            self._got_bad_key_format_id(pkformat)
-        assert isinstance(key, rsa.RSAPrivateKey)
-        self.key = key
+        pass

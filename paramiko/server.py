@@ -84,7 +84,7 @@ class ServerInterface:
         :param int chanid: ID of the channel
         :return: an `int` success or failure code (listed above)
         """
-        return OPEN_FAILED_ADMINISTRATIVELY_PROHIBITED
+        pass
 
     def get_allowed_auths(self, username):
         """
@@ -101,7 +101,7 @@ class ServerInterface:
         :param str username: the username requesting authentication.
         :return: a comma-separated `str` of authentication types
         """
-        return "password"
+        pass
 
     def check_auth_none(self, username):
         """
@@ -120,7 +120,7 @@ class ServerInterface:
             it succeeds.
         :rtype: int
         """
-        return AUTH_FAILED
+        pass
 
     def check_auth_password(self, username, password):
         """
@@ -145,7 +145,7 @@ class ServerInterface:
             successful, but authentication must continue.
         :rtype: int
         """
-        return AUTH_FAILED
+        pass
 
     def check_auth_publickey(self, username, key):
         """
@@ -177,7 +177,7 @@ class ServerInterface:
             authentication
         :rtype: int
         """
-        return AUTH_FAILED
+        pass
 
     def check_auth_interactive(self, username, submethods):
         """
@@ -202,7 +202,7 @@ class ServerInterface:
             object containing queries for the user
         :rtype: int or `.InteractiveQuery`
         """
-        return AUTH_FAILED
+        pass
 
     def check_auth_interactive_response(self, responses):
         """
@@ -233,7 +233,7 @@ class ServerInterface:
             object containing queries for the user
         :rtype: int or `.InteractiveQuery`
         """
-        return AUTH_FAILED
+        pass
 
     def check_auth_gssapi_with_mic(
         self, username, gss_authenticated=AUTH_FAILED, cc_file=None
@@ -261,9 +261,7 @@ class ServerInterface:
                  log in as a user.
         :see: http://www.unix.com/man-page/all/3/krb5_kuserok/
         """
-        if gss_authenticated == AUTH_SUCCESSFUL:
-            return AUTH_SUCCESSFUL
-        return AUTH_FAILED
+        pass
 
     def check_auth_gssapi_keyex(
         self, username, gss_authenticated=AUTH_FAILED, cc_file=None
@@ -293,9 +291,7 @@ class ServerInterface:
                  to log in as a user.
         :see: http://www.unix.com/man-page/all/3/krb5_kuserok/
         """
-        if gss_authenticated == AUTH_SUCCESSFUL:
-            return AUTH_SUCCESSFUL
-        return AUTH_FAILED
+        pass
 
     def enable_auth_gssapi(self):
         """
@@ -306,8 +302,7 @@ class ServerInterface:
         :returns bool: Whether GSSAPI authentication is enabled.
         :see: `.ssh_gss`
         """
-        UseGSSAPI = False
-        return UseGSSAPI
+        pass
 
     def check_port_forward_request(self, address, port):
         """
@@ -328,7 +323,7 @@ class ServerInterface:
             the port number (`int`) that was opened for listening, or ``False``
             to reject
         """
-        return False
+        pass
 
     def cancel_port_forward_request(self, address, port):
         """
@@ -369,7 +364,7 @@ class ServerInterface:
             ``True`` or a `tuple` of data if the request was granted; ``False``
             otherwise.
         """
-        return False
+        pass
 
     # ...Channel requests...
 
@@ -394,7 +389,7 @@ class ServerInterface:
             ``True`` if the pseudo-terminal has been allocated; ``False``
             otherwise.
         """
-        return False
+        pass
 
     def check_channel_shell_request(self, channel):
         """
@@ -410,7 +405,7 @@ class ServerInterface:
             ``True`` if this channel is now hooked up to a shell; ``False`` if
             a shell can't or won't be provided.
         """
-        return False
+        pass
 
     def check_channel_exec_request(self, channel, command):
         """
@@ -429,7 +424,7 @@ class ServerInterface:
 
         .. versionadded:: 1.1
         """
-        return False
+        pass
 
     def check_channel_subsystem_request(self, channel, name):
         """
@@ -453,13 +448,7 @@ class ServerInterface:
             ``True`` if this channel is now hooked up to the requested
             subsystem; ``False`` if that subsystem can't or won't be provided.
         """
-        transport = channel.get_transport()
-        handler_class, args, kwargs = transport._get_subsystem_handler(name)
-        if handler_class is None:
-            return False
-        handler = handler_class(channel, name, self, *args, **kwargs)
-        handler.start()
-        return True
+        pass
 
     def check_channel_window_change_request(
         self, channel, width, height, pixelwidth, pixelheight
@@ -479,7 +468,7 @@ class ServerInterface:
             height of screen in pixels, if known (may be ``0`` if unknown).
         :return: ``True`` if the terminal was resized; ``False`` if not.
         """
-        return False
+        pass
 
     def check_channel_x11_request(
         self,
@@ -505,7 +494,7 @@ class ServerInterface:
         :param int screen_number: the number of the X11 screen to connect to
         :return: ``True`` if the X11 session was opened; ``False`` if not
         """
-        return False
+        pass
 
     def check_channel_forward_agent_request(self, channel):
         """
@@ -521,7 +510,7 @@ class ServerInterface:
         If ``True`` is returned, the server should create an
         :class:`AgentServerProxy` to access the agent.
         """
-        return False
+        pass
 
     def check_channel_direct_tcpip_request(self, chanid, origin, destination):
         """
@@ -561,7 +550,7 @@ class ServerInterface:
             (server side)
         :return: an `int` success or failure code (listed above)
         """
-        return OPEN_FAILED_ADMINISTRATIVELY_PROHIBITED
+        pass
 
     def check_channel_env_request(self, channel, name, value):
         """
@@ -579,7 +568,7 @@ class ServerInterface:
         :param str value: Channel value
         :returns: A boolean
         """
-        return False
+        pass
 
     def get_banner(self):
         """
@@ -593,7 +582,7 @@ class ServerInterface:
 
         .. versionadded:: 2.3
         """
-        return (None, None)
+        pass
 
 
 class InteractiveQuery:
@@ -632,7 +621,7 @@ class InteractiveQuery:
             ``True`` (default) if the user's response should be echoed;
             ``False`` if not (for a password or similar)
         """
-        self.prompts.append((prompt, echo))
+        pass
 
 
 class SubsystemHandler(threading.Thread):
@@ -675,26 +664,10 @@ class SubsystemHandler(threading.Thread):
         Return the `.ServerInterface` object associated with this channel and
         subsystem.
         """
-        return self.__server
+        pass
 
     def _run(self):
-        try:
-            self.__transport._log(
-                DEBUG, "Starting handler for subsystem {}".format(self.__name)
-            )
-            self.start_subsystem(self.__name, self.__transport, self.__channel)
-        except Exception as e:
-            self.__transport._log(
-                ERROR,
-                'Exception in subsystem handler for "{}": {}'.format(
-                    self.__name, e
-                ),
-            )
-            self.__transport._log(ERROR, util.tb_strings())
-        try:
-            self.finish_subsystem()
-        except:
-            pass
+        pass
 
     def start_subsystem(self, name, transport, channel):
         """
@@ -729,4 +702,4 @@ class SubsystemHandler(threading.Thread):
 
         .. versionadded:: 1.1
         """
-        self.__channel.close()
+        pass

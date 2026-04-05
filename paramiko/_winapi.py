@@ -21,35 +21,7 @@ def format_system_message(errno):
     Call FormatMessage with a system error number to retrieve
     the descriptive error message.
     """
-    # first some flags used by FormatMessageW
-    ALLOCATE_BUFFER = 0x100
-    FROM_SYSTEM = 0x1000
-
-    # Let FormatMessageW allocate the buffer (we'll free it below)
-    # Also, let it know we want a system error message.
-    flags = ALLOCATE_BUFFER | FROM_SYSTEM
-    source = None
-    message_id = errno
-    language_id = 0
-    result_buffer = ctypes.wintypes.LPWSTR()
-    buffer_size = 0
-    arguments = None
-    bytes = ctypes.windll.kernel32.FormatMessageW(
-        flags,
-        source,
-        message_id,
-        language_id,
-        ctypes.byref(result_buffer),
-        buffer_size,
-        arguments,
-    )
-    # note the following will cause an infinite loop if GetLastError
-    #  repeatedly returns an error that cannot be formatted, although
-    #  this should not happen.
-    handle_nonzero_success(bytes)
-    message = result_buffer.value
-    ctypes.windll.kernel32.LocalFree(result_buffer)
-    return message
+    pass
 
 
 class WindowsError(builtins.WindowsError):
@@ -65,11 +37,11 @@ class WindowsError(builtins.WindowsError):
 
     @property
     def message(self):
-        return self.strerror
+        pass
 
     @property
     def code(self):
-        return self.winerror
+        pass
 
     def __str__(self):
         return self.message
@@ -79,8 +51,7 @@ class WindowsError(builtins.WindowsError):
 
 
 def handle_nonzero_success(result):
-    if result == 0:
-        raise WindowsError()
+    pass
 
 
 ###########################
@@ -166,7 +137,7 @@ class MemoryMap:
         return self
 
     def seek(self, pos):
-        self.pos = pos
+        pass
 
     def write(self, msg):
         assert isinstance(msg, bytes)
@@ -182,12 +153,7 @@ class MemoryMap:
         """
         Read n bytes from mapped view.
         """
-        out = ctypes.create_string_buffer(n)
-        source = self.view + self.pos
-        length = ctypes.c_size_t(n)
-        ctypes.windll.kernel32.RtlMoveMemory(out, source, length)
-        self.pos += n
-        return out.raw
+        pass
 
     def __exit__(self, exc_type, exc_val, tb):
         ctypes.windll.kernel32.UnmapViewOfFile(self.view)
@@ -327,12 +293,11 @@ class SECURITY_ATTRIBUTES(ctypes.Structure):
 
     @property
     def descriptor(self):
-        return self._descriptor
+        pass
 
     @descriptor.setter
     def descriptor(self, value):
-        self._descriptor = value
-        self.lpSecurityDescriptor = ctypes.addressof(value)
+        pass
 
 
 ctypes.windll.advapi32.SetSecurityDescriptorOwner.argtypes = (
@@ -349,42 +314,18 @@ def GetTokenInformation(token, information_class):
     """
     Given a token, get the token information for it.
     """
-    data_size = ctypes.wintypes.DWORD()
-    ctypes.windll.advapi32.GetTokenInformation(
-        token, information_class.num, 0, 0, ctypes.byref(data_size)
-    )
-    data = ctypes.create_string_buffer(data_size.value)
-    handle_nonzero_success(
-        ctypes.windll.advapi32.GetTokenInformation(
-            token,
-            information_class.num,
-            ctypes.byref(data),
-            ctypes.sizeof(data),
-            ctypes.byref(data_size),
-        )
-    )
-    return ctypes.cast(data, ctypes.POINTER(TOKEN_USER)).contents
+    pass
 
 
 def OpenProcessToken(proc_handle, access):
-    result = ctypes.wintypes.HANDLE()
-    proc_handle = ctypes.wintypes.HANDLE(proc_handle)
-    handle_nonzero_success(
-        ctypes.windll.advapi32.OpenProcessToken(
-            proc_handle, access, ctypes.byref(result)
-        )
-    )
-    return result
+    pass
 
 
 def get_current_user():
     """
     Return a TOKEN_USER for the owner of this process.
     """
-    process = OpenProcessToken(
-        ctypes.windll.kernel32.GetCurrentProcess(), TokenAccess.TOKEN_QUERY
-    )
-    return GetTokenInformation(process, TOKEN_USER)
+    pass
 
 
 def get_security_attributes_for_user(user=None):
@@ -392,22 +333,4 @@ def get_security_attributes_for_user(user=None):
     Return a SECURITY_ATTRIBUTES structure with the SID set to the
     specified user (uses current user if none is specified).
     """
-    if user is None:
-        user = get_current_user()
-
-    assert isinstance(user, TOKEN_USER), "user must be TOKEN_USER instance"
-
-    SD = SECURITY_DESCRIPTOR()
-    SA = SECURITY_ATTRIBUTES()
-    # by attaching the actual security descriptor, it will be garbage-
-    # collected with the security attributes
-    SA.descriptor = SD
-    SA.bInheritHandle = 1
-
-    ctypes.windll.advapi32.InitializeSecurityDescriptor(
-        ctypes.byref(SD), SECURITY_DESCRIPTOR.REVISION
-    )
-    ctypes.windll.advapi32.SetSecurityDescriptorOwner(
-        ctypes.byref(SD), user.SID, 0
-    )
-    return SA
+    pass

@@ -90,9 +90,7 @@ class BufferedFile(ClosingContextManager):
         Write out any data in the write buffer.  This may do nothing if write
         buffering is not turned on.
         """
-        self._write_all(self._wbuffer.getvalue())
-        self._wbuffer = BytesIO()
-        return
+        pass
 
     def __next__(self):
         """
@@ -119,7 +117,7 @@ class BufferedFile(ClosingContextManager):
             `True` if the file can be read from. If `False`, `read` will raise
             an exception.
         """
-        return (self._flags & self.FLAG_READ) == self.FLAG_READ
+        pass
 
     def writable(self):
         """
@@ -129,7 +127,7 @@ class BufferedFile(ClosingContextManager):
             `True` if the file can be written to. If `False`, `write` will
             raise an exception.
         """
-        return (self._flags & self.FLAG_WRITE) == self.FLAG_WRITE
+        pass
 
     def seekable(self):
         """
@@ -139,7 +137,7 @@ class BufferedFile(ClosingContextManager):
             `True` if the file supports random access. If `False`, `seek` will
             raise an exception.
         """
-        return False
+        pass
 
     def readinto(self, buff):
         """
@@ -149,9 +147,7 @@ class BufferedFile(ClosingContextManager):
         :returns:
             The number of bytes read.
         """
-        data = self.read(len(buff))
-        buff[: len(data)] = data
-        return len(data)
+        pass
 
     def read(self, size=None):
         """
@@ -170,47 +166,7 @@ class BufferedFile(ClosingContextManager):
             data read from the file (as bytes), or an empty string if EOF was
             encountered immediately
         """
-        if self._closed:
-            raise IOError("File is closed")
-        if not (self._flags & self.FLAG_READ):
-            raise IOError("File is not open for reading")
-        if (size is None) or (size < 0):
-            # go for broke
-            result = bytearray(self._rbuffer)
-            self._rbuffer = bytes()
-            self._pos += len(result)
-            while True:
-                try:
-                    new_data = self._read(self._DEFAULT_BUFSIZE)
-                except EOFError:
-                    new_data = None
-                if (new_data is None) or (len(new_data) == 0):
-                    break
-                result.extend(new_data)
-                self._realpos += len(new_data)
-                self._pos += len(new_data)
-            return bytes(result)
-        if size <= len(self._rbuffer):
-            result = self._rbuffer[:size]
-            self._rbuffer = self._rbuffer[size:]
-            self._pos += len(result)
-            return result
-        while len(self._rbuffer) < size:
-            read_size = size - len(self._rbuffer)
-            if self._flags & self.FLAG_BUFFERED:
-                read_size = max(self._bufsize, read_size)
-            try:
-                new_data = self._read(read_size)
-            except EOFError:
-                new_data = None
-            if (new_data is None) or (len(new_data) == 0):
-                break
-            self._rbuffer += new_data
-            self._realpos += len(new_data)
-        result = self._rbuffer[:size]
-        self._rbuffer = self._rbuffer[size:]
-        self._pos += len(result)
-        return result
+        pass
 
     def readline(self, size=None):
         """
@@ -327,17 +283,7 @@ class BufferedFile(ClosingContextManager):
         :param int sizehint: desired maximum number of bytes to read.
         :returns: list of lines read from the file.
         """
-        lines = []
-        byte_count = 0
-        while True:
-            line = self.readline()
-            if len(line) == 0:
-                break
-            lines.append(line)
-            byte_count += len(line)
-            if (sizehint is not None) and (byte_count >= sizehint):
-                break
-        return lines
+        pass
 
     def seek(self, offset, whence=0):
         """
@@ -367,7 +313,7 @@ class BufferedFile(ClosingContextManager):
 
         :returns: file position (`number <int>` of bytes).
         """
-        return self._pos
+        pass
 
     def write(self, data):
         """
@@ -414,20 +360,18 @@ class BufferedFile(ClosingContextManager):
 
         :param sequence: an iterable sequence of strings.
         """
-        for line in sequence:
-            self.write(line)
-        return
+        pass
 
     def xreadlines(self):
         """
         Identical to ``iter(f)``.  This is a deprecated file interface that
         predates Python iterator support.
         """
-        return self
+        pass
 
     @property
     def closed(self):
-        return self._closed
+        pass
 
     # ...overrides...
 
@@ -455,7 +399,7 @@ class BufferedFile(ClosingContextManager):
         a stream that can't be randomly accessed, you don't need to override
         this method,
         """
-        return 0
+        pass
 
     # ...internals...
 
@@ -463,66 +407,15 @@ class BufferedFile(ClosingContextManager):
         """
         Subclasses call this method to initialize the BufferedFile.
         """
-        # set bufsize in any event, because it's used for readline().
-        self._bufsize = self._DEFAULT_BUFSIZE
-        if bufsize < 0:
-            # do no buffering by default, because otherwise writes will get
-            # buffered in a way that will probably confuse people.
-            bufsize = 0
-        if bufsize == 1:
-            # apparently, line buffering only affects writes.  reads are only
-            # buffered if you call readline (directly or indirectly: iterating
-            # over a file will indirectly call readline).
-            self._flags |= self.FLAG_BUFFERED | self.FLAG_LINE_BUFFERED
-        elif bufsize > 1:
-            self._bufsize = bufsize
-            self._flags |= self.FLAG_BUFFERED
-            self._flags &= ~self.FLAG_LINE_BUFFERED
-        elif bufsize == 0:
-            # unbuffered
-            self._flags &= ~(self.FLAG_BUFFERED | self.FLAG_LINE_BUFFERED)
-
-        if ("r" in mode) or ("+" in mode):
-            self._flags |= self.FLAG_READ
-        if ("w" in mode) or ("+" in mode):
-            self._flags |= self.FLAG_WRITE
-        if "a" in mode:
-            self._flags |= self.FLAG_WRITE | self.FLAG_APPEND
-            self._size = self._get_size()
-            self._pos = self._realpos = self._size
-        if "b" in mode:
-            self._flags |= self.FLAG_BINARY
-        if "U" in mode:
-            self._flags |= self.FLAG_UNIVERSAL_NEWLINE
-            # built-in file objects have this attribute to store which kinds of
-            # line terminations they've seen:
-            # <http://www.python.org/doc/current/lib/built-in-funcs.html>
-            self.newlines = None
+        pass
 
     def _write_all(self, raw_data):
         # the underlying stream may be something that does partial writes (like
         # a socket).
-        data = memoryview(raw_data)
-        while len(data) > 0:
-            count = self._write(data)
-            data = data[count:]
-            if self._flags & self.FLAG_APPEND:
-                self._size += count
-                self._pos = self._realpos = self._size
-            else:
-                self._pos += count
-                self._realpos += count
-        return None
+        pass
 
     def _record_newline(self, newline):
         # silliness about tracking what kinds of newlines we've seen.
         # i don't understand why it can be None, a string, or a tuple, instead
         # of just always being a tuple, but we'll emulate that behavior anyway.
-        if not (self._flags & self.FLAG_UNIVERSAL_NEWLINE):
-            return
-        if self.newlines is None:
-            self.newlines = newline
-        elif self.newlines != newline and isinstance(self.newlines, bytes):
-            self.newlines = (self.newlines, newline)
-        elif newline not in self.newlines:
-            self.newlines += (newline,)
+        pass

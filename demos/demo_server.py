@@ -53,20 +53,13 @@ class Server(paramiko.ServerInterface):
         self.event = threading.Event()
 
     def check_channel_request(self, kind, chanid):
-        if kind == "session":
-            return paramiko.OPEN_SUCCEEDED
-        return paramiko.OPEN_FAILED_ADMINISTRATIVELY_PROHIBITED
+        pass
 
     def check_auth_password(self, username, password):
-        if (username == "robey") and (password == "foo"):
-            return paramiko.AUTH_SUCCESSFUL
-        return paramiko.AUTH_FAILED
+        pass
 
     def check_auth_publickey(self, username, key):
-        print("Auth attempt with key: " + u(hexlify(key.get_fingerprint())))
-        if (username == "robey") and (key == self.good_pub_key):
-            return paramiko.AUTH_SUCCESSFUL
-        return paramiko.AUTH_FAILED
+        pass
 
     def check_auth_gssapi_with_mic(
         self, username, gss_authenticated=paramiko.AUTH_FAILED, cc_file=None
@@ -85,31 +78,26 @@ class Server(paramiko.ServerInterface):
             `krb5_kuserok() man page
             <http://www.unix.com/man-page/all/3/krb5_kuserok/>`_
         """
-        if gss_authenticated == paramiko.AUTH_SUCCESSFUL:
-            return paramiko.AUTH_SUCCESSFUL
-        return paramiko.AUTH_FAILED
+        pass
 
     def check_auth_gssapi_keyex(
         self, username, gss_authenticated=paramiko.AUTH_FAILED, cc_file=None
     ):
-        if gss_authenticated == paramiko.AUTH_SUCCESSFUL:
-            return paramiko.AUTH_SUCCESSFUL
-        return paramiko.AUTH_FAILED
+        pass
 
     def enable_auth_gssapi(self):
-        return True
+        pass
 
     def get_allowed_auths(self, username):
-        return "gssapi-keyex,gssapi-with-mic,password,publickey"
+        pass
 
     def check_channel_shell_request(self, channel):
-        self.event.set()
-        return True
+        pass
 
     def check_channel_pty_request(
         self, channel, term, width, height, pixelwidth, pixelheight, modes
     ):
-        return True
+        pass
 
 
 DoGSSAPIKeyExchange = True

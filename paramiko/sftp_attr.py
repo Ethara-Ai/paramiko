@@ -69,16 +69,7 @@ class SFTPAttributes:
         :param str filename: the filename associated with this file.
         :return: new `.SFTPAttributes` object with the same attribute fields.
         """
-        attr = cls()
-        attr.st_size = obj.st_size
-        attr.st_uid = obj.st_uid
-        attr.st_gid = obj.st_gid
-        attr.st_mode = obj.st_mode
-        attr.st_atime = obj.st_atime
-        attr.st_mtime = obj.st_mtime
-        if filename is not None:
-            attr.filename = filename
-        return attr
+        pass
 
     def __repr__(self):
         return "<SFTPAttributes: {}>".format(self._debug_str())
@@ -86,87 +77,20 @@ class SFTPAttributes:
     # ...internals...
     @classmethod
     def _from_msg(cls, msg, filename=None, longname=None):
-        attr = cls()
-        attr._unpack(msg)
-        if filename is not None:
-            attr.filename = filename
-        if longname is not None:
-            attr.longname = longname
-        return attr
+        pass
 
     def _unpack(self, msg):
-        self._flags = msg.get_int()
-        if self._flags & self.FLAG_SIZE:
-            self.st_size = msg.get_int64()
-        if self._flags & self.FLAG_UIDGID:
-            self.st_uid = msg.get_int()
-            self.st_gid = msg.get_int()
-        if self._flags & self.FLAG_PERMISSIONS:
-            self.st_mode = msg.get_int()
-        if self._flags & self.FLAG_AMTIME:
-            self.st_atime = msg.get_int()
-            self.st_mtime = msg.get_int()
-        if self._flags & self.FLAG_EXTENDED:
-            count = msg.get_int()
-            for i in range(count):
-                self.attr[msg.get_string()] = msg.get_string()
+        pass
 
     def _pack(self, msg):
-        self._flags = 0
-        if self.st_size is not None:
-            self._flags |= self.FLAG_SIZE
-        if (self.st_uid is not None) and (self.st_gid is not None):
-            self._flags |= self.FLAG_UIDGID
-        if self.st_mode is not None:
-            self._flags |= self.FLAG_PERMISSIONS
-        if (self.st_atime is not None) and (self.st_mtime is not None):
-            self._flags |= self.FLAG_AMTIME
-        if len(self.attr) > 0:
-            self._flags |= self.FLAG_EXTENDED
-        msg.add_int(self._flags)
-        if self._flags & self.FLAG_SIZE:
-            msg.add_int64(self.st_size)
-        if self._flags & self.FLAG_UIDGID:
-            msg.add_int(self.st_uid)
-            msg.add_int(self.st_gid)
-        if self._flags & self.FLAG_PERMISSIONS:
-            msg.add_int(self.st_mode)
-        if self._flags & self.FLAG_AMTIME:
-            # throw away any fractional seconds
-            msg.add_int(int(self.st_atime))
-            msg.add_int(int(self.st_mtime))
-        if self._flags & self.FLAG_EXTENDED:
-            msg.add_int(len(self.attr))
-            for key, val in self.attr.items():
-                msg.add_string(key)
-                msg.add_string(val)
-        return
+        pass
 
     def _debug_str(self):
-        out = "[ "
-        if self.st_size is not None:
-            out += "size={} ".format(self.st_size)
-        if (self.st_uid is not None) and (self.st_gid is not None):
-            out += "uid={} gid={} ".format(self.st_uid, self.st_gid)
-        if self.st_mode is not None:
-            out += "mode=" + oct(self.st_mode) + " "
-        if (self.st_atime is not None) and (self.st_mtime is not None):
-            out += "atime={} mtime={} ".format(self.st_atime, self.st_mtime)
-        for k, v in self.attr.items():
-            out += '"{}"={!r} '.format(str(k), v)
-        out += "]"
-        return out
+        pass
 
     @staticmethod
     def _rwx(n, suid, sticky=False):
-        if suid:
-            suid = 2
-        out = "-r"[n >> 2] + "-w"[(n >> 1) & 1]
-        if sticky:
-            out += "-xTt"[suid + (n & 1)]
-        else:
-            out += "-xSs"[suid + (n & 1)]
-        return out
+        pass
 
     def __str__(self):
         """create a unix-style long description of the file (like ls -l)"""
@@ -236,4 +160,4 @@ class SFTPAttributes:
         )
 
     def asbytes(self):
-        return str(self).encode()
+        pass

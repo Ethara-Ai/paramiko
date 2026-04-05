@@ -27,9 +27,7 @@ def can_talk_to_agent():
     # use os.listdir() instead of os.path.exists(), because os.path.exists()
     # uses CreateFileW() API and the pipe cannot be reopen unless the server
     # calls DisconnectNamedPipe().
-    dir_, name = os.path.split(PIPE_NAME)
-    name = name.lower()
-    return any(name == n.lower() for n in os.listdir(dir_))
+    pass
 
 
 class OpenSSHAgentConnection:
@@ -50,7 +48,7 @@ class OpenSSHAgentConnection:
         return os.write(self._pipe, data)
 
     def recv(self, n):
-        return os.read(self._pipe, n)
+        pass
 
     def close(self):
         return os.close(self._pipe)

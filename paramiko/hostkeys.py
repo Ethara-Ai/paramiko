@@ -65,11 +65,7 @@ class HostKeys(MutableMapping):
         :param str keytype: key type (in ``"ssh-<type>"`` format)
         :param .PKey key: the key to add
         """
-        for e in self._entries:
-            if (hostname in e.hostnames) and (e.key.get_name() == keytype):
-                e.key = key
-                return
-        self._entries.append(HostKeyEntry([hostname], key))
+        pass
 
     def load(self, filename):
         """
@@ -86,22 +82,7 @@ class HostKeys(MutableMapping):
 
         :raises: ``IOError`` -- if there was an error reading the file
         """
-        with open(filename, "r") as f:
-            for lineno, line in enumerate(f, 1):
-                line = line.strip()
-                if (len(line) == 0) or (line[0] == "#"):
-                    continue
-                try:
-                    entry = HostKeyEntry.from_line(line, lineno)
-                except SSHException:
-                    continue
-                if entry is not None:
-                    _hostnames = entry.hostnames
-                    for h in _hostnames:
-                        if self.check(h, entry.key):
-                            entry.hostnames.remove(h)
-                    if len(entry.hostnames):
-                        self._entries.append(entry)
+        pass
 
     def save(self, filename):
         """
@@ -116,11 +97,7 @@ class HostKeys(MutableMapping):
 
         .. versionadded:: 1.6.1
         """
-        with open(filename, "w") as f:
-            for e in self._entries:
-                line = e.to_line()
-                if line:
-                    f.write(line)
+        pass
 
     def lookup(self, hostname):
         """
@@ -132,62 +109,7 @@ class HostKeys(MutableMapping):
         :return: dict of `str` -> `.PKey` keys associated with this host
             (or ``None``)
         """
-
-        class SubDict(MutableMapping):
-            def __init__(self, hostname, entries, hostkeys):
-                self._hostname = hostname
-                self._entries = entries
-                self._hostkeys = hostkeys
-
-            def __iter__(self):
-                for k in self.keys():
-                    yield k
-
-            def __len__(self):
-                return len(self.keys())
-
-            def __delitem__(self, key):
-                for e in list(self._entries):
-                    if e.key.get_name() == key:
-                        self._entries.remove(e)
-                        break
-                else:
-                    raise KeyError(key)
-
-            def __getitem__(self, key):
-                for e in self._entries:
-                    if e.key.get_name() == key:
-                        return e.key
-                raise KeyError(key)
-
-            def __setitem__(self, key, val):
-                for e in self._entries:
-                    if e.key is None:
-                        continue
-                    if e.key.get_name() == key:
-                        # replace
-                        e.key = val
-                        break
-                else:
-                    # add a new one
-                    e = HostKeyEntry([hostname], val)
-                    self._entries.append(e)
-                    self._hostkeys._entries.append(e)
-
-            def keys(self):
-                return [
-                    e.key.get_name()
-                    for e in self._entries
-                    if e.key is not None
-                ]
-
-        entries = []
-        for e in self._entries:
-            if self._hostname_matches(hostname, e):
-                entries.append(e)
-        if len(entries) == 0:
-            return None
-        return SubDict(hostname, entries, self)
+        pass
 
     def _hostname_matches(self, hostname, entry):
         """
@@ -195,15 +117,7 @@ class HostKeys(MutableMapping):
 
         :returns bool:
         """
-        for h in entry.hostnames:
-            if (
-                h == hostname
-                or h.startswith("|1|")
-                and not hostname.startswith("|1|")
-                and constant_time_bytes_eq(self.hash_host(hostname, h), h)
-            ):
-                return True
-        return False
+        pass
 
     def check(self, hostname, key):
         """
@@ -215,19 +129,13 @@ class HostKeys(MutableMapping):
         :return:
             ``True`` if the key is associated with the hostname; else ``False``
         """
-        k = self.lookup(hostname)
-        if k is None:
-            return False
-        host_key = k.get(key.get_name(), None)
-        if host_key is None:
-            return False
-        return host_key.asbytes() == key.asbytes()
+        pass
 
     def clear(self):
         """
         Remove all host keys from the dictionary.
         """
-        self._entries = []
+        pass
 
     def __iter__(self):
         for k in self.keys():
@@ -276,10 +184,7 @@ class HostKeys(MutableMapping):
         return ret
 
     def values(self):
-        ret = []
-        for k in self.keys():
-            ret.append(self.lookup(k))
-        return ret
+        pass
 
     @staticmethod
     def hash_host(hostname, salt=None):
@@ -292,16 +197,7 @@ class HostKeys(MutableMapping):
             (must be 20 bytes long)
         :return: the hashed hostname as a `str`
         """
-        if salt is None:
-            salt = os.urandom(sha1().digest_size)
-        else:
-            if salt.startswith("|1|"):
-                salt = salt.split("|")[2]
-            salt = decodebytes(b(salt))
-        assert len(salt) == sha1().digest_size
-        hmac = HMAC(salt, b(hostname), sha1).digest()
-        hostkey = "|1|{}|{}".format(u(encodebytes(salt)), u(encodebytes(hmac)))
-        return hostkey.replace("\n", "")
+        pass
 
 
 class InvalidHostKey(Exception):
@@ -335,36 +231,7 @@ class HostKeyEntry:
 
         :param str line: a line from an OpenSSH known_hosts file
         """
-        log = get_logger("paramiko.hostkeys")
-        fields = re.split(" |\t", line)
-        if len(fields) < 3:
-            # Bad number of fields
-            msg = "Not enough fields found in known_hosts in line {} ({!r})"
-            log.info(msg.format(lineno, line))
-            return None
-        fields = fields[:3]
-
-        names, key_type, key = fields
-        names = names.split(",")
-
-        # Decide what kind of key we're looking at and create an object
-        # to hold it accordingly.
-        try:
-            # TODO: this grew organically and doesn't seem /wrong/ per se (file
-            # read -> unicode str -> bytes for base64 decode -> decoded bytes);
-            # but in Python 3 forever land, can we simply use
-            # `base64.b64decode(str-from-file)` here?
-            key_bytes = decodebytes(b(key))
-        except binascii.Error as e:
-            raise InvalidHostKey(line, e)
-
-        try:
-            return cls(names, PKey.from_type_string(key_type, key_bytes))
-        except UnknownKeyType:
-            # TODO 4.0: consider changing HostKeys API so this just raises
-            # naturally and the exception is muted higher up in the stack?
-            log.info("Unable to handle key of type {}".format(key_type))
-            return None
+        pass
 
     def to_line(self):
         """
@@ -372,13 +239,7 @@ class HostKeyEntry:
         the object is not in a valid state.  A trailing newline is
         included.
         """
-        if self.valid:
-            return "{} {} {}\n".format(
-                ",".join(self.hostnames),
-                self.key.get_name(),
-                self.key.get_base64(),
-            )
-        return None
+        pass
 
     def __repr__(self):
         return "<HostKeyEntry {!r}: {!r}>".format(self.hostnames, self.key)

@@ -97,7 +97,7 @@ class SSHConfig:
 
         .. versionadded:: 2.7
         """
-        return cls.from_file(StringIO(text))
+        pass
 
     @classmethod
     def from_path(cls, path):
@@ -106,8 +106,7 @@ class SSHConfig:
 
         .. versionadded:: 2.7
         """
-        with open(path) as flo:
-            return cls.from_file(flo)
+        pass
 
     @classmethod
     def from_file(cls, flo):
@@ -116,9 +115,7 @@ class SSHConfig:
 
         .. versionadded:: 2.7
         """
-        obj = cls()
-        obj.parse(flo)
-        return obj
+        pass
 
     def parse(self, file_obj):
         """
@@ -126,59 +123,7 @@ class SSHConfig:
 
         :param file_obj: a file-like object to read the config file from
         """
-        # Start out w/ implicit/anonymous global host-like block to hold
-        # anything not contained by an explicit one.
-        context = {"host": ["*"], "config": {}}
-        for line in file_obj:
-            # Strip any leading or trailing whitespace from the line.
-            # Refer to https://github.com/paramiko/paramiko/issues/499
-            line = line.strip()
-            # Skip blanks, comments
-            if not line or line.startswith("#"):
-                continue
-
-            # Parse line into key, value
-            match = re.match(self.SETTINGS_REGEX, line)
-            if not match:
-                raise ConfigParseError("Unparsable line {}".format(line))
-            key = match.group(1).lower()
-            value = match.group(2)
-
-            # Host keyword triggers switch to new block/context
-            if key in ("host", "match"):
-                self._config.append(context)
-                context = {"config": {}}
-                if key == "host":
-                    # TODO 4.0: make these real objects or at least name this
-                    # "hosts" to acknowledge it's an iterable. (Doing so prior
-                    # to 3.0, despite it being a private API, feels bad -
-                    # surely such an old codebase has folks actually relying on
-                    # these keys.)
-                    context["host"] = self._get_hosts(value)
-                else:
-                    context["matches"] = self._get_matches(value)
-            # Special-case for noop ProxyCommands
-            elif key == "proxycommand" and value.lower() == "none":
-                # Store 'none' as None - not as a string implying that the
-                # proxycommand is the literal shell command "none"!
-                context["config"][key] = None
-            # All other keywords get stored, directly or via append
-            else:
-                if value.startswith('"') and value.endswith('"'):
-                    value = value[1:-1]
-
-                # identityfile, localforward, remoteforward keys are special
-                # cases, since they are allowed to be specified multiple times
-                # and they should be tried in order of specification.
-                if key in ["identityfile", "localforward", "remoteforward"]:
-                    if key in context["config"]:
-                        context["config"][key].append(value)
-                    else:
-                        context["config"][key] = [value]
-                elif key not in context["config"]:
-                    context["config"][key] = value
-        # Store last 'open' block and we're done
-        self._config.append(context)
+        pass
 
     def lookup(self, hostname):
         """
@@ -221,65 +166,11 @@ class SSHConfig:
         .. versionchanged:: 3.3
             Added ``Match final`` support.
         """
-        # First pass
-        options = self._lookup(hostname=hostname)
-        # Inject HostName if it was not set (this used to be done incidentally
-        # during tokenization, for some reason).
-        if "hostname" not in options:
-            options["hostname"] = hostname
-        # Handle canonicalization
-        canon = options.get("canonicalizehostname", None) in ("yes", "always")
-        maxdots = int(options.get("canonicalizemaxdots", 1))
-        if canon and hostname.count(".") <= maxdots:
-            # NOTE: OpenSSH manpage does not explicitly state this, but its
-            # implementation for CanonicalDomains is 'split on any whitespace'.
-            domains = options["canonicaldomains"].split()
-            hostname = self.canonicalize(hostname, options, domains)
-            # Overwrite HostName again here (this is also what OpenSSH does)
-            options["hostname"] = hostname
-            options = self._lookup(
-                hostname, options, canonical=True, final=True
-            )
-        else:
-            options = self._lookup(
-                hostname, options, canonical=False, final=True
-            )
-        return options
+        pass
 
     def _lookup(self, hostname, options=None, canonical=False, final=False):
         # Init
-        if options is None:
-            options = SSHConfigDict()
-        # Iterate all stanzas, applying any that match, in turn (so that things
-        # like Match can reference currently understood state)
-        for context in self._config:
-            if not (
-                self._pattern_matches(context.get("host", []), hostname)
-                or self._does_match(
-                    context.get("matches", []),
-                    hostname,
-                    canonical,
-                    final,
-                    options,
-                )
-            ):
-                continue
-            for key, value in context["config"].items():
-                if key not in options:
-                    # Create a copy of the original value,
-                    # else it will reference the original list
-                    # in self._config and update that value too
-                    # when the extend() is being called.
-                    options[key] = value[:] if value is not None else value
-                elif key == "identityfile":
-                    options[key].extend(
-                        x for x in value if x not in options[key]
-                    )
-        if final:
-            # Expand variables in resulting values
-            # (besides 'Match exec' which was already handled above)
-            options = self._expand_variables(options, hostname)
-        return options
+        pass
 
     def canonicalize(self, hostname, options, domains):
         """
@@ -293,120 +184,26 @@ class SSHConfig:
 
         .. versionadded:: 2.7
         """
-        found = False
-        for domain in domains:
-            candidate = "{}.{}".format(hostname, domain)
-            family_specific = _addressfamily_host_lookup(candidate, options)
-            if family_specific is not None:
-                # TODO: would we want to dig deeper into other results? e.g. to
-                # find something that satisfies PermittedCNAMEs when that is
-                # implemented?
-                found = family_specific[0]
-            else:
-                # TODO: what does ssh use here and is there a reason to use
-                # that instead of gethostbyname?
-                try:
-                    found = socket.gethostbyname(candidate)
-                except socket.gaierror:
-                    pass
-            if found:
-                # TODO: follow CNAME (implied by found != candidate?) if
-                # CanonicalizePermittedCNAMEs allows it
-                return candidate
-        # If we got here, it means canonicalization failed.
-        # When CanonicalizeFallbackLocal is undefined or 'yes', we just spit
-        # back the original hostname.
-        if options.get("canonicalizefallbacklocal", "yes") == "yes":
-            return hostname
-        # And here, we failed AND fallback was set to a non-yes value, so we
-        # need to get mad.
-        raise CouldNotCanonicalize(hostname)
+        pass
 
     def get_hostnames(self):
         """
         Return the set of literal hostnames defined in the SSH config (both
         explicit hostnames and wildcard entries).
         """
-        hosts = set()
-        for entry in self._config:
-            hosts.update(entry["host"])
-        return hosts
+        pass
 
     def _pattern_matches(self, patterns, target):
         # Convenience auto-splitter if not already a list
-        if hasattr(patterns, "split"):
-            patterns = patterns.split(",")
-        match = False
-        for pattern in patterns:
-            # Short-circuit if target matches a negated pattern
-            if pattern.startswith("!") and fnmatch.fnmatch(
-                target, pattern[1:]
-            ):
-                return False
-            # Flag a match, but continue (in case of later negation) if regular
-            # match occurs
-            elif fnmatch.fnmatch(target, pattern):
-                match = True
-        return match
+        pass
 
     def _does_match(
         self, match_list, target_hostname, canonical, final, options
     ):
-        matched = []
-        candidates = match_list[:]
-        local_username = getpass.getuser()
-        while candidates:
-            candidate = candidates.pop(0)
-            passed = None
-            # Obtain latest host/user value every loop, so later Match may
-            # reference values assigned within a prior Match.
-            configured_host = options.get("hostname", None)
-            configured_user = options.get("user", None)
-            type_, param = candidate["type"], candidate["param"]
-            # Canonical is a hard pass/fail based on whether this is a
-            # canonicalized re-lookup.
-            if type_ == "canonical":
-                if self._should_fail(canonical, candidate):
-                    return False
-            if type_ == "final":
-                passed = final
-            # The parse step ensures we only see this by itself or after
-            # canonical, so it's also an easy hard pass. (No negation here as
-            # that would be uh, pretty weird?)
-            elif type_ == "all":
-                return True
-            # From here, we are testing various non-hard criteria,
-            # short-circuiting only on fail
-            elif type_ == "host":
-                hostval = configured_host or target_hostname
-                passed = self._pattern_matches(param, hostval)
-            elif type_ == "originalhost":
-                passed = self._pattern_matches(param, target_hostname)
-            elif type_ == "user":
-                user = configured_user or local_username
-                passed = self._pattern_matches(param, user)
-            elif type_ == "localuser":
-                passed = self._pattern_matches(param, local_username)
-            elif type_ == "exec":
-                exec_cmd = self._tokenize(
-                    options, target_hostname, "match-exec", param
-                )
-                # This is the laziest spot in which we can get mad about an
-                # inability to import Invoke.
-                if invoke is None:
-                    raise invoke_import_error
-                # Like OpenSSH, we 'redirect' stdout but let stderr bubble up
-                passed = invoke.run(exec_cmd, hide="stdout", warn=True).ok
-            # Tackle any 'passed, but was negated' results from above
-            if passed is not None and self._should_fail(passed, candidate):
-                return False
-            # Made it all the way here? Everything matched!
-            matched.append(candidate)
-        # Did anything match? (To be treated as bool, usually.)
-        return matched
+        pass
 
     def _should_fail(self, would_pass, candidate):
-        return would_pass if candidate["negate"] else not would_pass
+        pass
 
     def _tokenize(self, config, target_hostname, key, value):
         """
@@ -419,56 +216,7 @@ class SSHConfig:
 
         :returns: The tokenized version of the input ``value`` string.
         """
-        allowed_tokens = self._allowed_tokens(key)
-        # Short-circuit if no tokenization possible
-        if not allowed_tokens:
-            return value
-        # Obtain potentially configured hostname, for use with %h.
-        # Special-case where we are tokenizing the hostname itself, to avoid
-        # replacing %h with a %h-bearing value, etc.
-        configured_hostname = target_hostname
-        if key != "hostname":
-            configured_hostname = config.get("hostname", configured_hostname)
-        # Ditto the rest of the source values
-        if "port" in config:
-            port = config["port"]
-        else:
-            port = SSH_PORT
-        user = getpass.getuser()
-        if "user" in config:
-            remoteuser = config["user"]
-        else:
-            remoteuser = user
-        local_hostname = socket.gethostname().split(".")[0]
-        local_fqdn = LazyFqdn(config, local_hostname)
-        homedir = os.path.expanduser("~")
-        tohash = local_hostname + target_hostname + repr(port) + remoteuser
-        # The actual tokens!
-        replacements = {
-            # TODO: %%???
-            "%C": sha1(tohash.encode()).hexdigest(),
-            "%d": homedir,
-            "%h": configured_hostname,
-            # TODO: %i?
-            "%L": local_hostname,
-            "%l": local_fqdn,
-            # also this is pseudo buggy when not in Match exec mode so document
-            # that. also WHY is that the case?? don't we do all of this late?
-            "%n": target_hostname,
-            "%p": port,
-            "%r": remoteuser,
-            # TODO: %T? don't believe this is possible however
-            "%u": user,
-            "~": homedir,
-        }
-        # Do the thing with the stuff
-        tokenized = value
-        for find, replace in replacements.items():
-            if find not in allowed_tokens:
-                continue
-            tokenized = tokenized.replace(find, str(replace))
-        # TODO: log? eg that value -> tokenized
-        return tokenized
+        pass
 
     def _allowed_tokens(self, key):
         """
@@ -479,7 +227,7 @@ class SSHConfig:
             preserve as-strict-as-possible compatibility with OpenSSH, which
             for whatever reason only applies some tokens to some config keys.
         """
-        return self.TOKENS_BY_CONFIG_KEY.get(key, [])
+        pass
 
     def _expand_variables(self, config, target_hostname):
         """
@@ -491,25 +239,13 @@ class SSHConfig:
         :param dict config: the currently parsed config
         :param str hostname: the hostname whose config is being looked up
         """
-        for k in config:
-            if config[k] is None:
-                continue
-            tokenizer = partial(self._tokenize, config, target_hostname, k)
-            if isinstance(config[k], list):
-                for i, value in enumerate(config[k]):
-                    config[k][i] = tokenizer(value)
-            else:
-                config[k] = tokenizer(config[k])
-        return config
+        pass
 
     def _get_hosts(self, host):
         """
         Return a list of host_names from host value.
         """
-        try:
-            return shlex.split(host)
-        except ValueError:
-            raise ConfigParseError("Unparsable host {}".format(host))
+        pass
 
     def _get_matches(self, match):
         """
@@ -517,43 +253,7 @@ class SSHConfig:
 
         Performs some parse-time validation as well.
         """
-        matches = []
-        tokens = shlex.split(match)
-        while tokens:
-            match = {"type": None, "param": None, "negate": False}
-            type_ = tokens.pop(0)
-            # Handle per-keyword negation
-            if type_.startswith("!"):
-                match["negate"] = True
-                type_ = type_[1:]
-            match["type"] = type_
-            # all/canonical have no params (everything else does)
-            if type_ in ("all", "canonical", "final"):
-                matches.append(match)
-                continue
-            if not tokens:
-                raise ConfigParseError(
-                    "Missing parameter to Match '{}' keyword".format(type_)
-                )
-            match["param"] = tokens.pop(0)
-            matches.append(match)
-        # Perform some (easier to do now than in the middle) validation that is
-        # better handled here than at lookup time.
-        keywords = [x["type"] for x in matches]
-        if "all" in keywords:
-            allowable = ("all", "canonical")
-            ok, bad = (
-                list(filter(lambda x: x in allowable, keywords)),
-                list(filter(lambda x: x not in allowable, keywords)),
-            )
-            err = None
-            if any(bad):
-                err = "Match does not allow 'all' mixed with anything but 'canonical'"  # noqa
-            elif "canonical" in ok and ok.index("canonical") > ok.index("all"):
-                err = "Match does not allow 'all' before 'canonical'"
-            if err is not None:
-                raise ConfigParseError(err)
-        return matches
+        pass
 
 
 def _addressfamily_host_lookup(hostname, options):
@@ -574,23 +274,7 @@ def _addressfamily_host_lookup(hostname, options):
     :param options: `SSHConfigDict` instance w/ parsed options.
     :returns: ``getaddrinfo``-style tuples, or ``None``, depending.
     """
-    address_family = options.get("addressfamily", "any").lower()
-    if address_family == "any":
-        return
-    try:
-        family = socket.AF_INET6
-        if address_family == "inet":
-            family = socket.AF_INET
-        return socket.getaddrinfo(
-            hostname,
-            None,
-            family,
-            socket.SOCK_DGRAM,
-            socket.IPPROTO_IP,
-            socket.AI_CANONNAME,
-        )
-    except socket.gaierror:
-        pass
+    pass
 
 
 class LazyFqdn:
@@ -679,10 +363,7 @@ class SSHConfigDict(dict):
 
         .. versionadded:: 2.5
         """
-        val = self[key]
-        if isinstance(val, bool):
-            return val
-        return val.lower() == "yes"
+        pass
 
     def as_int(self, key):
         """
@@ -693,4 +374,4 @@ class SSHConfigDict(dict):
 
         .. versionadded:: 2.5
         """
-        return int(self[key])
+        pass

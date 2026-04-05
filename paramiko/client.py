@@ -134,20 +134,7 @@ class SSHClient(ClosingContextManager):
 
         :raises: ``IOError`` -- if the file could not be written
         """
-
-        # update local host keys from file (in case other SSH clients
-        # have written to the known_hosts file meanwhile.
-        if self._host_keys_filename is not None:
-            self.load_host_keys(self._host_keys_filename)
-
-        with open(filename, "w") as f:
-            for hostname, keys in self._host_keys.items():
-                for keytype, key in keys.items():
-                    f.write(
-                        "{} {} {}\n".format(
-                            hostname, keytype, key.get_base64()
-                        )
-                    )
+        pass
 
     def get_host_keys(self):
         """
@@ -156,7 +143,7 @@ class SSHClient(ClosingContextManager):
 
         :return: the local host keys as a `.HostKeys` object.
         """
-        return self._host_keys
+        pass
 
     def set_log_channel(self, name):
         """
@@ -165,7 +152,7 @@ class SSHClient(ClosingContextManager):
 
         :param str name: new channel name for logging
         """
-        self._log_channel = name
+        pass
 
     def set_missing_host_key_policy(self, policy):
         """
@@ -197,21 +184,7 @@ class SSHClient(ClosingContextManager):
         :param int port: the server port to connect to
         :returns: Yields an iterable of ``(family, address)`` tuples
         """
-        guess = True
-        addrinfos = socket.getaddrinfo(
-            hostname, port, socket.AF_UNSPEC, socket.SOCK_STREAM
-        )
-        for (family, socktype, proto, canonname, sockaddr) in addrinfos:
-            if socktype == socket.SOCK_STREAM:
-                yield family, sockaddr
-                guess = False
-
-        # some OS like AIX don't indicate SOCK_STREAM support, so just
-        # guess. :(  We only do this if we did not get a single result marked
-        # as socktype == SOCK_STREAM.
-        if guess:
-            for family, _, _, _, sockaddr in addrinfos:
-                yield family, sockaddr
+        pass
 
     def connect(
         self,
@@ -555,17 +528,7 @@ class SSHClient(ClosingContextManager):
         .. versionchanged:: 1.10
             Added the ``get_pty`` kwarg.
         """
-        chan = self._transport.open_session(timeout=timeout)
-        if get_pty:
-            chan.get_pty()
-        chan.settimeout(timeout)
-        if environment:
-            chan.update_environment(environment)
-        chan.exec_command(command)
-        stdin = chan.makefile_stdin("wb", bufsize)
-        stdout = chan.makefile("r", bufsize)
-        stderr = chan.makefile_stderr("r", bufsize)
-        return stdin, stdout, stderr
+        pass
 
     def invoke_shell(
         self,
@@ -603,7 +566,7 @@ class SSHClient(ClosingContextManager):
 
         :return: a new `.SFTPClient` session object
         """
-        return self._transport.open_sftp_client()
+        pass
 
     def get_transport(self):
         """
@@ -624,28 +587,7 @@ class SSHClient(ClosingContextManager):
         - Otherwise, the filename is assumed to be a private key, and the
           matching public cert will be loaded if it exists.
         """
-        cert_suffix = "-cert.pub"
-        # Assume privkey, not cert, by default
-        if filename.endswith(cert_suffix):
-            key_path = filename[: -len(cert_suffix)]
-            cert_path = filename
-        else:
-            key_path = filename
-            cert_path = filename + cert_suffix
-        # Blindly try the key path; if no private key, nothing will work.
-        key = klass.from_private_key_file(key_path, password)
-        # TODO: change this to 'Loading' instead of 'Trying' sometime; probably
-        # when #387 is released, since this is a critical log message users are
-        # likely testing/filtering for (bah.)
-        msg = "Trying discovered key {} in {}".format(
-            hexlify(key.get_fingerprint()), key_path
-        )
-        self._log(DEBUG, msg)
-        # Attempt to load cert if it exists.
-        if os.path.isfile(cert_path):
-            key.load_certificate(cert_path)
-            self._log(DEBUG, "Adding public certificate {}".format(cert_path))
-        return key
+        pass
 
     def _auth(
         self,
@@ -673,149 +615,10 @@ class SSHClient(ClosingContextManager):
         isn't also given], or for two-factor authentication [for which it is
         required].)
         """
-        saved_exception = None
-        two_factor = False
-        allowed_types = set()
-        two_factor_types = {"keyboard-interactive", "password"}
-        if passphrase is None and password is not None:
-            passphrase = password
-
-        # If GSS-API support and GSS-PI Key Exchange was performed, we attempt
-        # authentication with gssapi-keyex.
-        if gss_kex and self._transport.gss_kex_used:
-            try:
-                self._transport.auth_gssapi_keyex(username)
-                return
-            except Exception as e:
-                saved_exception = e
-
-        # Try GSS-API authentication (gssapi-with-mic) only if GSS-API Key
-        # Exchange is not performed, because if we use GSS-API for the key
-        # exchange, there is already a fully established GSS-API context, so
-        # why should we do that again?
-        if gss_auth:
-            try:
-                return self._transport.auth_gssapi_with_mic(
-                    username, gss_host, gss_deleg_creds
-                )
-            except Exception as e:
-                saved_exception = e
-
-        if pkey is not None:
-            try:
-                self._log(
-                    DEBUG,
-                    "Trying SSH key {}".format(
-                        hexlify(pkey.get_fingerprint())
-                    ),
-                )
-                allowed_types = set(
-                    self._transport.auth_publickey(username, pkey)
-                )
-                two_factor = allowed_types & two_factor_types
-                if not two_factor:
-                    return
-            except SSHException as e:
-                saved_exception = e
-
-        if not two_factor:
-            for key_filename in key_filenames:
-                # TODO 4.0: leverage PKey.from_path() if we don't end up just
-                # killing SSHClient entirely
-                for pkey_class in (RSAKey, ECDSAKey, Ed25519Key):
-                    try:
-                        key = self._key_from_filepath(
-                            key_filename, pkey_class, passphrase
-                        )
-                        allowed_types = set(
-                            self._transport.auth_publickey(username, key)
-                        )
-                        two_factor = allowed_types & two_factor_types
-                        if not two_factor:
-                            return
-                        break
-                    except SSHException as e:
-                        saved_exception = e
-
-        if not two_factor and allow_agent:
-            if self._agent is None:
-                self._agent = Agent()
-
-            for key in self._agent.get_keys():
-                try:
-                    id_ = hexlify(key.get_fingerprint())
-                    self._log(DEBUG, "Trying SSH agent key {}".format(id_))
-                    # for 2-factor auth a successfully auth'd key password
-                    # will return an allowed 2fac auth method
-                    allowed_types = set(
-                        self._transport.auth_publickey(username, key)
-                    )
-                    two_factor = allowed_types & two_factor_types
-                    if not two_factor:
-                        return
-                    break
-                except SSHException as e:
-                    saved_exception = e
-
-        if not two_factor:
-            keyfiles = []
-
-            for keytype, name in [
-                (RSAKey, "rsa"),
-                (ECDSAKey, "ecdsa"),
-                (Ed25519Key, "ed25519"),
-            ]:
-                # ~/ssh/ is for windows
-                for directory in [".ssh", "ssh"]:
-                    full_path = os.path.expanduser(
-                        "~/{}/id_{}".format(directory, name)
-                    )
-                    if os.path.isfile(full_path):
-                        # TODO: only do this append if below did not run
-                        keyfiles.append((keytype, full_path))
-                        if os.path.isfile(full_path + "-cert.pub"):
-                            keyfiles.append((keytype, full_path + "-cert.pub"))
-
-            if not look_for_keys:
-                keyfiles = []
-
-            for pkey_class, filename in keyfiles:
-                try:
-                    key = self._key_from_filepath(
-                        filename, pkey_class, passphrase
-                    )
-                    # for 2-factor auth a successfully auth'd key will result
-                    # in ['password']
-                    allowed_types = set(
-                        self._transport.auth_publickey(username, key)
-                    )
-                    two_factor = allowed_types & two_factor_types
-                    if not two_factor:
-                        return
-                    break
-                except (SSHException, IOError) as e:
-                    saved_exception = e
-
-        if password is not None:
-            try:
-                self._transport.auth_password(username, password)
-                return
-            except SSHException as e:
-                saved_exception = e
-        elif two_factor:
-            try:
-                self._transport.auth_interactive_dumb(username)
-                return
-            except SSHException as e:
-                saved_exception = e
-
-        # if we got an auth-failed exception earlier, re-raise it
-        if saved_exception is not None:
-            raise saved_exception
-        raise SSHException("No authentication methods available")
+        pass
 
     def _log(self, level, msg):
-        self._transport._log(level, msg)
+        pass
 
 
 class MissingHostKeyPolicy:
@@ -846,15 +649,7 @@ class AutoAddPolicy(MissingHostKeyPolicy):
     """
 
     def missing_host_key(self, client, hostname, key):
-        client._host_keys.add(hostname, key.get_name(), key)
-        if client._host_keys_filename is not None:
-            client.save_host_keys(client._host_keys_filename)
-        client._log(
-            DEBUG,
-            "Adding {} host key for {}: {}".format(
-                key.get_name(), hostname, hexlify(key.get_fingerprint())
-            ),
-        )
+        pass
 
 
 class RejectPolicy(MissingHostKeyPolicy):
@@ -864,15 +659,7 @@ class RejectPolicy(MissingHostKeyPolicy):
     """
 
     def missing_host_key(self, client, hostname, key):
-        client._log(
-            DEBUG,
-            "Rejecting {} host key for {}: {}".format(
-                key.get_name(), hostname, hexlify(key.get_fingerprint())
-            ),
-        )
-        raise SSHException(
-            "Server {!r} not found in known_hosts".format(hostname)
-        )
+        pass
 
 
 class WarningPolicy(MissingHostKeyPolicy):
@@ -882,8 +669,4 @@ class WarningPolicy(MissingHostKeyPolicy):
     """
 
     def missing_host_key(self, client, hostname, key):
-        warnings.warn(
-            "Unknown {} host key for {}: {}".format(
-                key.get_name(), hostname, hexlify(key.get_fingerprint())
-            )
-        )
+        pass

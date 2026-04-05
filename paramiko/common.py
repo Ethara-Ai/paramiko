@@ -33,15 +33,12 @@ def byte_chr(c):
 
 
 def byte_mask(c, mask):
-    assert isinstance(c, int)
-    return struct.pack("B", c & mask)
+    pass
 
 
 def byte_ord(c):
     # In case we're handed a string instead of an int.
-    if not isinstance(c, int):
-        c = ord(c)
-    return c
+    pass
 
 
 (

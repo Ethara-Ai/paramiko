@@ -42,18 +42,7 @@ key_dispatch_table = {"rsa": RSAKey}
 
 def progress(arg=None):
 
-    if not arg:
-        sys.stdout.write("0%\x08\x08\x08 ")
-        sys.stdout.flush()
-    elif arg[0] == "p":
-        sys.stdout.write("25%\x08\x08\x08\x08 ")
-        sys.stdout.flush()
-    elif arg[0] == "h":
-        sys.stdout.write("50%\x08\x08\x08\x08 ")
-        sys.stdout.flush()
-    elif arg[0] == "x":
-        sys.stdout.write("75%\x08\x08\x08\x08 ")
-        sys.stdout.flush()
+    pass
 
 
 if __name__ == "__main__":

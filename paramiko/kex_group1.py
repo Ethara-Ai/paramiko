@@ -53,27 +53,10 @@ class KexGroup1:
         self.f = 0
 
     def start_kex(self):
-        self._generate_x()
-        if self.transport.server_mode:
-            # compute f = g^x mod p, but don't send it yet
-            self.f = pow(self.G, self.x, self.P)
-            self.transport._expect_packet(_MSG_KEXDH_INIT)
-            return
-        # compute e = g^x mod p (where g=2), and send it
-        self.e = pow(self.G, self.x, self.P)
-        m = Message()
-        m.add_byte(c_MSG_KEXDH_INIT)
-        m.add_mpint(self.e)
-        self.transport._send_message(m)
-        self.transport._expect_packet(_MSG_KEXDH_REPLY)
+        pass
 
     def parse_next(self, ptype, m):
-        if self.transport.server_mode and (ptype == _MSG_KEXDH_INIT):
-            return self._parse_kexdh_init(m)
-        elif not self.transport.server_mode and (ptype == _MSG_KEXDH_REPLY):
-            return self._parse_kexdh_reply(m)
-        msg = "KexGroup1 asked to handle packet type {:d}"
-        raise SSHException(msg.format(ptype))
+        pass
 
     # ...internals...
 
@@ -84,72 +67,12 @@ class KexGroup1:
         # potential x where the first 63 bits are 1, because some of those
         # will be larger than q (but this is a tiny tiny subset of
         # potential x).
-        while 1:
-            x_bytes = os.urandom(128)
-            x_bytes = byte_mask(x_bytes[0], 0x7F) + x_bytes[1:]
-            if (
-                x_bytes[:8] != b7fffffffffffffff
-                and x_bytes[:8] != b0000000000000000
-            ):
-                break
-        self.x = util.inflate_long(x_bytes)
+        pass
 
     def _parse_kexdh_reply(self, m):
         # client mode
-        host_key = m.get_string()
-        self.f = m.get_mpint()
-        if (self.f < 1) or (self.f > self.P - 1):
-            raise SSHException('Server kex "f" is out of range')
-        sig = m.get_binary()
-        K = pow(self.f, self.x, self.P)
-        # okay, build up the hash H of
-        # (V_C || V_S || I_C || I_S || K_S || e || f || K)
-        hm = Message()
-        hm.add(
-            self.transport.local_version,
-            self.transport.remote_version,
-            self.transport.local_kex_init,
-            self.transport.remote_kex_init,
-        )
-        hm.add_string(host_key)
-        hm.add_mpint(self.e)
-        hm.add_mpint(self.f)
-        hm.add_mpint(K)
-        self.transport._set_K_H(K, self.hash_algo(hm.asbytes()).digest())
-        self.transport._verify_key(host_key, sig)
-        self.transport._activate_outbound()
+        pass
 
     def _parse_kexdh_init(self, m):
         # server mode
-        self.e = m.get_mpint()
-        if (self.e < 1) or (self.e > self.P - 1):
-            raise SSHException('Client kex "e" is out of range')
-        K = pow(self.e, self.x, self.P)
-        key = self.transport.get_server_key().asbytes()
-        # okay, build up the hash H of
-        # (V_C || V_S || I_C || I_S || K_S || e || f || K)
-        hm = Message()
-        hm.add(
-            self.transport.remote_version,
-            self.transport.local_version,
-            self.transport.remote_kex_init,
-            self.transport.local_kex_init,
-        )
-        hm.add_string(key)
-        hm.add_mpint(self.e)
-        hm.add_mpint(self.f)
-        hm.add_mpint(K)
-        H = self.hash_algo(hm.asbytes()).digest()
-        self.transport._set_K_H(K, H)
-        # sign it
-        sig = self.transport.get_server_key().sign_ssh_data(
-            H, self.transport.host_key_type
-        )
-        # send reply
-        m = Message()
-        m.add_byte(c_MSG_KEXDH_REPLY)
-        m.add_string(key)
-        m.add_mpint(self.f)
-        m.add_string(sig)
-        self.transport._send_message(m)
-        self.transport._activate_outbound()
+        pass

@@ -44,7 +44,7 @@ from paramiko.message import Message
 
 
 def compute_hmac(key, message, digest_class):
-    return HMAC(key, message, digest_class).digest()
+    pass
 
 
 class NeedRekeyException(Exception):
@@ -56,10 +56,7 @@ class NeedRekeyException(Exception):
 
 
 def first_arg(e):
-    arg = None
-    if type(e.args) is tuple and len(e.args) > 0:
-        arg = e.args[0]
-    return arg
+    pass
 
 
 class Packetizer:
@@ -135,19 +132,19 @@ class Packetizer:
 
     @property
     def closed(self):
-        return self.__closed
+        pass
 
     def reset_seqno_out(self):
-        self.__sequence_number_out = 0
+        pass
 
     def reset_seqno_in(self):
-        self.__sequence_number_in = 0
+        pass
 
     def set_log(self, log):
         """
         Set the Python log object to use for logging.
         """
-        self.__logger = log
+        pass
 
     def set_outbound_cipher(
         self,
@@ -165,23 +162,7 @@ class Packetizer:
         Switch outbound data cipher.
         :param etm: Set encrypt-then-mac from OpenSSH
         """
-        self.__block_engine_out = block_engine
-        self.__sdctr_out = sdctr
-        self.__block_size_out = block_size
-        self.__mac_engine_out = mac_engine
-        self.__mac_size_out = mac_size
-        self.__mac_key_out = mac_key
-        self.__sent_bytes = 0
-        self.__sent_packets = 0
-        self.__etm_out = etm
-        self.__aead_out = aead
-        self.__iv_out = iv_out
-        # wait until the reset happens in both directions before clearing
-        # rekey flag
-        self.__init_count |= 1
-        if self.__init_count == 3:
-            self.__init_count = 0
-            self.__need_rekey = False
+        pass
 
     def set_inbound_cipher(
         self,
@@ -198,46 +179,29 @@ class Packetizer:
         Switch inbound data cipher.
         :param etm: Set encrypt-then-mac from OpenSSH
         """
-        self.__block_engine_in = block_engine
-        self.__block_size_in = block_size
-        self.__mac_engine_in = mac_engine
-        self.__mac_size_in = mac_size
-        self.__mac_key_in = mac_key
-        self.__received_bytes = 0
-        self.__received_packets = 0
-        self.__received_bytes_overflow = 0
-        self.__received_packets_overflow = 0
-        self.__etm_in = etm
-        self.__aead_in = aead
-        self.__iv_in = iv_in
-        # wait until the reset happens in both directions before clearing
-        # rekey flag
-        self.__init_count |= 2
-        if self.__init_count == 3:
-            self.__init_count = 0
-            self.__need_rekey = False
+        pass
 
     def set_outbound_compressor(self, compressor):
-        self.__compress_engine_out = compressor
+        pass
 
     def set_inbound_compressor(self, compressor):
-        self.__compress_engine_in = compressor
+        pass
 
     def close(self):
         self.__closed = True
         self.__socket.close()
 
     def set_hexdump(self, hexdump):
-        self.__dump_packets = hexdump
+        pass
 
     def get_hexdump(self):
-        return self.__dump_packets
+        pass
 
     def get_mac_size_in(self):
-        return self.__mac_size_in
+        pass
 
     def get_mac_size_out(self):
-        return self.__mac_size_out
+        pass
 
     def need_rekey(self):
         """
@@ -245,7 +209,7 @@ class Packetizer:
         will be triggered during a packet read or write, so it should be
         checked after every read or write, or at least after every few.
         """
-        return self.__need_rekey
+        pass
 
     def set_keepalive(self, interval, callback):
         """
@@ -253,12 +217,10 @@ class Packetizer:
         no data read from or written to the socket, the callback will be
         executed and the timer will be reset.
         """
-        self.__keepalive_interval = interval
-        self.__keepalive_callback = callback
-        self.__keepalive_last = time.time()
+        pass
 
     def read_timer(self):
-        self.__timer_expired = True
+        pass
 
     def start_handshake(self, timeout):
         """
@@ -268,9 +230,7 @@ class Packetizer:
 
         :param float timeout: amount of seconds to wait before timing out
         """
-        if not self.__timer:
-            self.__timer = threading.Timer(float(timeout), self.read_timer)
-            self.__timer.start()
+        pass
 
     def handshake_timed_out(self):
         """
@@ -282,20 +242,13 @@ class Packetizer:
 
         :return: handshake time out status, as a `bool`
         """
-        if not self.__timer:
-            return False
-        if self.__handshake_complete:
-            return False
-        return self.__timer_expired
+        pass
 
     def complete_handshake(self):
         """
         Tells `Packetizer` that the handshake has completed.
         """
-        if self.__timer:
-            self.__timer.cancel()
-            self.__timer_expired = False
-            self.__handshake_complete = True
+        pass
 
     def read_all(self, n, check_rekey=False):
         """
@@ -308,82 +261,10 @@ class Packetizer:
             ``EOFError`` -- if the socket was closed before all the bytes could
             be read
         """
-        out = bytes()
-        # handle over-reading from reading the banner line
-        if len(self.__remainder) > 0:
-            out = self.__remainder[:n]
-            self.__remainder = self.__remainder[n:]
-            n -= len(out)
-        while n > 0:
-            got_timeout = False
-            if self.handshake_timed_out():
-                raise EOFError()
-            try:
-                x = self.__socket.recv(n)
-                if len(x) == 0:
-                    raise EOFError()
-                out += x
-                n -= len(x)
-            except socket.timeout:
-                got_timeout = True
-            except socket.error as e:
-                # on Linux, sometimes instead of socket.timeout, we get
-                # EAGAIN.  this is a bug in recent (> 2.6.9) kernels but
-                # we need to work around it.
-                arg = first_arg(e)
-                if arg == errno.EAGAIN:
-                    got_timeout = True
-                elif self.__closed:
-                    raise EOFError()
-                else:
-                    raise
-            if got_timeout:
-                if self.__closed:
-                    raise EOFError()
-                if check_rekey and (len(out) == 0) and self.__need_rekey:
-                    raise NeedRekeyException()
-                self._check_keepalive()
-        return out
+        pass
 
     def write_all(self, out):
-        self.__keepalive_last = time.time()
-        iteration_with_zero_as_return_value = 0
-        while len(out) > 0:
-            retry_write = False
-            try:
-                n = self.__socket.send(out)
-            except socket.timeout:
-                retry_write = True
-            except socket.error as e:
-                arg = first_arg(e)
-                if arg == errno.EAGAIN:
-                    retry_write = True
-                else:
-                    n = -1
-            except ProxyCommandFailure:
-                raise  # so it doesn't get swallowed by the below catchall
-            except Exception:
-                # could be: (32, 'Broken pipe')
-                n = -1
-            if retry_write:
-                n = 0
-                if self.__closed:
-                    n = -1
-            else:
-                if n == 0 and iteration_with_zero_as_return_value > 10:
-                    # We shouldn't retry the write, but we didn't
-                    # manage to send anything over the socket. This might be an
-                    # indication that we have lost contact with the remote
-                    # side, but are yet to receive an EOFError or other socket
-                    # errors. Let's give it some iteration to try and catch up.
-                    n = -1
-                iteration_with_zero_as_return_value += 1
-            if n < 0:
-                raise EOFError()
-            if n == len(out):
-                break
-            out = out[n:]
-        return
+        pass
 
     def readline(self, timeout):
         """
@@ -403,87 +284,13 @@ class Packetizer:
     def _inc_iv_counter(self, iv):
         # Per https://www.rfc-editor.org/rfc/rfc5647.html#section-7.1 ,
         # we increment the last 8 bytes of the 12-byte IV...
-        iv_counter_b = iv[4:]
-        iv_counter = int.from_bytes(iv_counter_b, "big")
-        inc_iv_counter = iv_counter + 1
-        inc_iv_counter_b = inc_iv_counter.to_bytes(8, "big")
-        # ...then re-concatenate it with the static first 4 bytes
-        new_iv = iv[0:4] + inc_iv_counter_b
-        return new_iv
+        pass
 
     def send_message(self, data):
         """
         Write a block of data using the current cipher, as an SSH block.
         """
-        # encrypt this sucka
-        data = data.asbytes()
-        cmd = byte_ord(data[0])
-        if cmd in MSG_NAMES:
-            cmd_name = MSG_NAMES[cmd]
-        else:
-            cmd_name = "${:x}".format(cmd)
-        orig_len = len(data)
-        self.__write_lock.acquire()
-        try:
-            if self.__compress_engine_out is not None:
-                data = self.__compress_engine_out(data)
-            packet = self._build_packet(data)
-            if self.__dump_packets:
-                self._log(
-                    DEBUG,
-                    "Write packet <{}>, length {}".format(cmd_name, orig_len),
-                )
-                self._log(DEBUG, util.format_binary(packet, "OUT: "))
-            if self.__block_engine_out is not None:
-                if self.__etm_out:
-                    # packet length is not encrypted in EtM
-                    out = packet[0:4] + self.__block_engine_out.update(
-                        packet[4:]
-                    )
-                elif self.__aead_out:
-                    # Packet-length field is used as the 'associated data'
-                    # under AES-GCM, so like EtM, it's not encrypted. See
-                    # https://www.rfc-editor.org/rfc/rfc5647#section-7.3
-                    out = packet[0:4] + self.__block_engine_out.encrypt(
-                        self.__iv_out, packet[4:], packet[0:4]
-                    )
-                    self.__iv_out = self._inc_iv_counter(self.__iv_out)
-                else:
-                    out = self.__block_engine_out.update(packet)
-            else:
-                out = packet
-            # Append an MAC when needed (eg, not under AES-GCM)
-            if self.__block_engine_out is not None and not self.__aead_out:
-                packed = struct.pack(">I", self.__sequence_number_out)
-                payload = packed + (out if self.__etm_out else packet)
-                out += compute_hmac(
-                    self.__mac_key_out, payload, self.__mac_engine_out
-                )[: self.__mac_size_out]
-            next_seq = (self.__sequence_number_out + 1) & xffffffff
-            if next_seq == 0 and not self._initial_kex_done:
-                raise SSHException(
-                    "Sequence number rolled over during initial kex!"
-                )
-            self.__sequence_number_out = next_seq
-            self.write_all(out)
-
-            self.__sent_bytes += len(out)
-            self.__sent_packets += 1
-            sent_too_much = (
-                self.__sent_packets >= self.REKEY_PACKETS
-                or self.__sent_bytes >= self.REKEY_BYTES
-            )
-            if sent_too_much and not self.__need_rekey:
-                # only ask once for rekeying
-                msg = "Rekeying (hit {} packets, {} bytes sent)"
-                self._log(
-                    DEBUG, msg.format(self.__sent_packets, self.__sent_bytes)
-                )
-                self.__received_bytes_overflow = 0
-                self.__received_packets_overflow = 0
-                self._trigger_rekey()
-        finally:
-            self.__write_lock.release()
+        pass
 
     def read_message(self):
         """
@@ -493,204 +300,23 @@ class Packetizer:
         :raises: `.SSHException` -- if the packet is mangled
         :raises: `.NeedRekeyException` -- if the transport should rekey
         """
-        header = self.read_all(self.__block_size_in, check_rekey=True)
-        if self.__etm_in:
-            packet_size = struct.unpack(">I", header[:4])[0]
-            remaining = packet_size - self.__block_size_in + 4
-            packet = header[4:] + self.read_all(remaining, check_rekey=False)
-            mac = self.read_all(self.__mac_size_in, check_rekey=False)
-            mac_payload = (
-                struct.pack(">II", self.__sequence_number_in, packet_size)
-                + packet
-            )
-            my_mac = compute_hmac(
-                self.__mac_key_in, mac_payload, self.__mac_engine_in
-            )[: self.__mac_size_in]
-            if not util.constant_time_bytes_eq(my_mac, mac):
-                raise SSHException("Mismatched MAC")
-            header = packet
-
-        if self.__aead_in:
-            # Grab unencrypted (considered 'additional data' under GCM) packet
-            # length.
-            packet_size = struct.unpack(">I", header[:4])[0]
-            aad = header[:4]
-            remaining = (
-                packet_size - self.__block_size_in + 4 + self.__mac_size_in
-            )
-            packet = header[4:] + self.read_all(remaining, check_rekey=False)
-            header = self.__block_engine_in.decrypt(self.__iv_in, packet, aad)
-
-            self.__iv_in = self._inc_iv_counter(self.__iv_in)
-
-        if self.__block_engine_in is not None and not self.__aead_in:
-            header = self.__block_engine_in.update(header)
-        if self.__dump_packets:
-            self._log(DEBUG, util.format_binary(header, "IN: "))
-
-        # When ETM or AEAD (GCM) are in use, we've already read the packet size
-        # & decrypted everything, so just set the packet back to the header we
-        # obtained.
-        if self.__etm_in or self.__aead_in:
-            packet = header
-        # Otherwise, use the older non-ETM logic
-        else:
-            packet_size = struct.unpack(">I", header[:4])[0]
-
-            # leftover contains decrypted bytes from the first block (after the
-            # length field)
-            leftover = header[4:]
-            if (packet_size - len(leftover)) % self.__block_size_in != 0:
-                raise SSHException("Invalid packet blocking")
-            buf = self.read_all(
-                packet_size + self.__mac_size_in - len(leftover)
-            )
-            packet = buf[: packet_size - len(leftover)]
-            post_packet = buf[packet_size - len(leftover) :]
-
-            if self.__block_engine_in is not None:
-                packet = self.__block_engine_in.update(packet)
-            packet = leftover + packet
-
-        if self.__dump_packets:
-            self._log(DEBUG, util.format_binary(packet, "IN: "))
-
-        if self.__mac_size_in > 0 and not self.__etm_in and not self.__aead_in:
-            mac = post_packet[: self.__mac_size_in]
-            mac_payload = (
-                struct.pack(">II", self.__sequence_number_in, packet_size)
-                + packet
-            )
-            my_mac = compute_hmac(
-                self.__mac_key_in, mac_payload, self.__mac_engine_in
-            )[: self.__mac_size_in]
-            if not util.constant_time_bytes_eq(my_mac, mac):
-                raise SSHException("Mismatched MAC")
-        padding = byte_ord(packet[0])
-        payload = packet[1 : packet_size - padding]
-
-        if self.__dump_packets:
-            self._log(
-                DEBUG,
-                "Got payload ({} bytes, {} padding)".format(
-                    packet_size, padding
-                ),
-            )
-
-        if self.__compress_engine_in is not None:
-            payload = self.__compress_engine_in(payload)
-
-        msg = Message(payload[1:])
-        msg.seqno = self.__sequence_number_in
-        next_seq = (self.__sequence_number_in + 1) & xffffffff
-        if next_seq == 0 and not self._initial_kex_done:
-            raise SSHException(
-                "Sequence number rolled over during initial kex!"
-            )
-        self.__sequence_number_in = next_seq
-
-        # check for rekey
-        raw_packet_size = packet_size + self.__mac_size_in + 4
-        self.__received_bytes += raw_packet_size
-        self.__received_packets += 1
-        if self.__need_rekey:
-            # we've asked to rekey -- give them some packets to comply before
-            # dropping the connection
-            self.__received_bytes_overflow += raw_packet_size
-            self.__received_packets_overflow += 1
-            if (
-                self.__received_packets_overflow
-                >= self.REKEY_PACKETS_OVERFLOW_MAX
-            ) or (
-                self.__received_bytes_overflow >= self.REKEY_BYTES_OVERFLOW_MAX
-            ):
-                raise SSHException(
-                    "Remote transport is ignoring rekey requests"
-                )
-        elif (self.__received_packets >= self.REKEY_PACKETS) or (
-            self.__received_bytes >= self.REKEY_BYTES
-        ):
-            # only ask once for rekeying
-            err = "Rekeying (hit {} packets, {} bytes received)"
-            self._log(
-                DEBUG,
-                err.format(self.__received_packets, self.__received_bytes),
-            )
-            self.__received_bytes_overflow = 0
-            self.__received_packets_overflow = 0
-            self._trigger_rekey()
-
-        cmd = byte_ord(payload[0])
-        if cmd in MSG_NAMES:
-            cmd_name = MSG_NAMES[cmd]
-        else:
-            cmd_name = "${:x}".format(cmd)
-        if self.__dump_packets:
-            self._log(
-                DEBUG,
-                "Read packet <{}>, length {}".format(cmd_name, len(payload)),
-            )
-        return cmd, msg
+        pass
 
     # ...protected...
 
     def _log(self, level, msg):
-        if self.__logger is None:
-            return
-        if issubclass(type(msg), list):
-            for m in msg:
-                self.__logger.log(level, m)
-        else:
-            self.__logger.log(level, msg)
+        pass
 
     def _check_keepalive(self):
-        if (
-            not self.__keepalive_interval
-            or not self.__block_engine_out
-            or self.__need_rekey
-        ):
-            # wait till we're encrypting, and not in the middle of rekeying
-            return
-        now = time.time()
-        if now > self.__keepalive_last + self.__keepalive_interval:
-            self.__keepalive_callback()
-            self.__keepalive_last = now
+        pass
 
     def _read_timeout(self, timeout):
-        start = time.time()
-        while True:
-            try:
-                x = self.__socket.recv(128)
-                if len(x) == 0:
-                    raise EOFError()
-                break
-            except socket.timeout:
-                pass
-            if self.__closed:
-                raise EOFError()
-            now = time.time()
-            if now - start >= timeout:
-                raise socket.timeout()
-        return x
+        pass
 
     def _build_packet(self, payload):
         # pad up at least 4 bytes, to nearest block-size (usually 8)
-        bsize = self.__block_size_out
-        # do not include payload length in computations for padding in EtM mode
-        # (payload length won't be encrypted)
-        addlen = 4 if self.__etm_out or self.__aead_out else 8
-        padding = 3 + bsize - ((len(payload) + addlen) % bsize)
-        packet = struct.pack(">IB", len(payload) + padding + 1, padding)
-        packet += payload
-        if self.__sdctr_out or self.__block_engine_out is None:
-            # cute trick i caught openssh doing: if we're not encrypting or
-            # SDCTR mode (RFC4344),
-            # don't waste random bytes for the padding
-            packet += zero_byte * padding
-        else:
-            packet += os.urandom(padding)
-        return packet
+        pass
 
     def _trigger_rekey(self):
         # outside code should check for this flag
-        self.__need_rekey = True
+        pass
